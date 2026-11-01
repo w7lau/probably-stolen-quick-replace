@@ -7,5 +7,7 @@ Copy-Item -LiteralPath "$PSScriptRoot\src\bin\Release\netstandard2.1\QuickReplac
 Copy-Item -LiteralPath "$PSScriptRoot\README.md" -Destination "$package\README.txt"
 Copy-Item -LiteralPath "$PSScriptRoot\LICENSE" -Destination "$package\LICENSE.txt"
 New-Item -ItemType Directory -Force "$PSScriptRoot\dist" | Out-Null
-Compress-Archive -LiteralPath $package -DestinationPath "$PSScriptRoot\dist\QuickReplace-0.1.1.zip" -Force
-Write-Output 'Built QuickReplace-0.1.1.zip'
+$manifest = [xml][IO.File]::ReadAllText((Join-Path $package 'manifest.xml'))
+$archiveName = 'QuickReplace-' + $manifest.Manifest.ModVersion + '.zip'
+Compress-Archive -LiteralPath $package -DestinationPath (Join-Path "$PSScriptRoot\dist" $archiveName) -Force
+Write-Output "Built $archiveName"

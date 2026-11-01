@@ -5,8 +5,11 @@ namespace QuickReplace
     internal static class SwapLogic
     {
         internal static bool Eligible(GameItem incoming, GameSlotInventory slot)
+            => Eligible(incoming, slot?.childItem);
+
+        internal static bool Eligible(GameItem incoming, GameItem old)
         {
-            var old = slot?.childItem;
+            var slot = old?.parentInventory;
             var owner = slot?.GetParentItem();
             return incoming != null && old != null && incoming != old && owner != null
                 && incoming.unitCount == 1 && old.unitCount == 1
@@ -23,9 +26,12 @@ namespace QuickReplace
         }
 
         internal static bool TrySwap(GameItem incoming, GameSlotInventory target)
+            => TrySwap(incoming, target?.childItem);
+
+        internal static bool TrySwap(GameItem incoming, GameItem old)
         {
-            if (!Eligible(incoming, target)) return false;
-            var old = target.childItem;
+            if (!Eligible(incoming, old)) return false;
+            var target = old.parentInventory;
             var source = incoming.parentInventory;
             var incomingShape = incoming.modifiedShape.Clone();
             var oldShape = old.modifiedShape.Clone();
@@ -33,19 +39,17 @@ namespace QuickReplace
             try
             {
                 if (!source.Expel(incoming) || !target.Expel(old)) return false;
-                var putNew = target.TryInventorySlot(incoming, 1, incoming.modifiedShape);
+                var putNew = FindPosition(incoming, target, oldShape);
                 if (!Valid(putNew, target)) return false;
 
                 // Try the vacated position first, preserving the old item's own dimensions.
-                var replacementShape = new GridShapeBuilder(old.modifiedShape).SetTransform(incomingShape).Build();
-                var putOld = source.TryInventorySlot(old, 1, replacementShape);
-                if (!Valid(putOld, source)) putOld = source.TryFindOneValidInventorySlot(old);
+                var putOld = FindPosition(old, source, incomingShape);
                 if (!Valid(putOld, source)) return false;
 
                 // Preserve object identity, charge, durability and genetics; never clone/stack/destroy.
                 if (putOld.AcceptUnchecked() != 1) return false;
                 // Returning the old item can trigger native shape/state callbacks. Revalidate.
-                putNew = target.TryInventorySlot(incoming, 1, incoming.modifiedShape);
+                putNew = FindPosition(incoming, target, oldShape);
                 if (!Valid(putNew, target) || putNew.AcceptUnchecked() != 1) return false;
                 success = incoming.parentInventory == target && old.parentInventory == source;
                 return success;
@@ -61,6 +65,13 @@ namespace QuickReplace
                     Restore(old, target, oldShape);
                 }
             }
+        }
+
+        private static SlotMarker FindPosition(GameItem item, GameInventory inventory, GridShape vacated)
+        {
+            var shape = new GridShapeBuilder(item.modifiedShape).SetTransform(vacated).Build();
+            var marker = inventory.TryInventorySlot(item, 1, shape);
+            return Valid(marker, inventory) ? marker : inventory.TryFindOneValidInventorySlot(item);
         }
 
         private static bool Valid(SlotMarker marker, GameInventory inventory) => marker != null

@@ -55,9 +55,10 @@ namespace QuickReplace
                 || ___currentItem.IsDestroyed() || ___currentItem.isDebugMenu) return;
             // EndDrag is also called by reset/cancel. A reset clears both targets first.
             if (___lastItem == null && ___lastInventory == null) return;
-            var target = Targets.Find(___currentItem, ___lastItem, ___lastInventory);
-            if (target == null) return;
-            SwapLogic.TrySwap(___currentItem, target);
+            var old = ChargerTargets.Find(___currentItem, ___lastItem, ___lastInventory)
+                ?? Targets.Find(___currentItem, ___lastItem, ___lastInventory)?.childItem;
+            if (old == null) return;
+            SwapLogic.TrySwap(___currentItem, old);
             // A rejected replacement is a cancelled drop, not a second native use action.
             ___currentRemove = 0;
             ___lastItem = null;
@@ -75,15 +76,27 @@ namespace QuickReplace
         {
             if (!ModEntry.Enabled || !___isDragging || ___currentRemove != 1 || ___currentItem == null
                 || ___currentItem.isDebugMenu) return;
-            var target = Targets.Find(___currentItem, ___lastItem, ___lastInventory);
-            if (target == null) return;
+            var charged = ChargerTargets.Find(___currentItem, ___lastItem, ___lastInventory);
+            var old = charged ?? Targets.Find(___currentItem, ___lastItem, ___lastInventory)?.childItem;
+            if (old == null) return;
             bool chinese = LocHelper.GetCurrentLocaleCode().StartsWith("zh", System.StringComparison.OrdinalIgnoreCase);
             Text.Clear();
-            if (chinese)
-                Text.AddLine("松开鼠标，换下「" + target.childItem.name + "」")
+            if (charged != null && chinese)
+                Text.AddLine("松开鼠标，换出电量最多的电池")
+                    .AddLine(charged.name + "（" + ChargerTargets.Energy(charged) + " kJ）")
+                    .AddLine("拖入的留下充电，换出的放回原物品栏。")
+                    .AddLine("放不下就不换。");
+            else if (charged != null)
+                Text.AddLine("Release to take the battery with the most charge")
+                    .AddLine(charged.name + " (" + ChargerTargets.Energy(charged) + " kJ)")
+                    .AddLine("The battery you dragged in stays to charge.")
+                    .AddLine("The charged one returns to the source inventory.")
+                    .AddLine("If there is no room, nothing is swapped.");
+            else if (chinese)
+                Text.AddLine("松开鼠标，换下「" + old.name + "」")
                     .AddLine("旧的放回原来的物品栏，放不下就不换。");
             else
-                Text.AddLine("Release to replace " + target.childItem.name)
+                Text.AddLine("Release to replace " + old.name)
                     .AddLine("The old item goes back where you took the new one from.")
                     .AddLine("If there is no room, nothing is swapped.");
             OverlayHandler.current.ShowTooltip(Input.mousePosition, __instance.tooltipTranslation, Text.Build());

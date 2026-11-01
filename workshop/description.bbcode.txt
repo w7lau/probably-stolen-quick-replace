@@ -1,10 +1,14 @@
 把新滤芯拖到水壶上，或把新电池拖到电器上，就能直接换下旧的，不用先取出来。
 
+把低电量或没电的电池拖到充电器上，就能换出里面电量最多的一块。只换电量更高的，充电器放满也能换。
+
 旧件会放回新件原来的物品栏，放不下就不换。支持游戏允许安装的滤芯、电池等物品，暂不支持成叠物品。
 
 订阅后在 Mod 管理中启用，并重启游戏。
 
 Drag a new filter onto a water pitcher, or a new battery onto an appliance, to replace the old one without removing it first.
+
+Drag a low or empty battery onto a charger to swap it for the one with the most remaining energy. Only swaps for a battery with more charge, even when the charger is full.
 
 The old item goes back to the inventory the new one came from. If there is no room, nothing is swapped. Works with filters, batteries and other items the device accepts. Stacks are not supported.
 

@@ -1,2 +1,3 @@
-拖新滤芯、电池到设备上，直接替换旧件。
-Drag a new filter or battery onto a device to replace the installed one.
+新增充电器换电：拖入低电量或没电的电池，换出电量最多的一块。充电器内外的电池显示顺序保持一致。
+
+Added charger swapping: drag in a low or empty battery to take the one with the most remaining energy. Battery order now matches inside and outside the charger.
