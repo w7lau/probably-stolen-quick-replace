@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+dist/
+package/**/*.dll
+package/**/README.txt
+package/**/LICENSE.txt
+.vs/
+.publish/
+.research/
+COMPATIBILITY.txt
