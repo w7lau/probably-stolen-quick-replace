@@ -29,6 +29,9 @@ namespace QuickReplace
 
         internal static GameSlotInventory Find(GameItem incoming, GameItem hovered, GameInventory hoveredInventory)
         {
+            // An applicable native use (upgrade, repair, etc.) must keep its original target.
+            // Do not turn a currently blocked use into an unrelated inventory exchange either.
+            if (incoming == null || (hovered != null && incoming.MayTarget(hovered))) return null;
             var direct = hoveredInventory as GameSlotInventory ?? hovered?.parentInventory as GameSlotInventory;
             if (direct != null && (hovered == null || direct.childItem == hovered))
                 return SwapLogic.Eligible(incoming, direct) ? direct : null;
@@ -55,6 +58,18 @@ namespace QuickReplace
                 || ___currentItem.IsDestroyed() || ___currentItem.isDebugMenu) return;
             // EndDrag is also called by reset/cancel. A reset clears both targets first.
             if (___lastItem == null && ___lastInventory == null) return;
+            // A battery under the cursor would otherwise invoke the game's battery swap.
+            // Route it to the charger's normal insertion path while usable space remains.
+            if (___lastItem != null && !___lastItem.IsID("recharger"))
+            {
+                var space = ChargerTargets.FindSpace(___currentItem, ___lastItem, ___lastInventory);
+                if (space != null)
+                {
+                    ___lastItem = space.inventory.GetParentItem();
+                    ___lastInventory = null;
+                    return;
+                }
+            }
             var old = ChargerTargets.Find(___currentItem, ___lastItem, ___lastInventory)
                 ?? Targets.Find(___currentItem, ___lastItem, ___lastInventory)?.childItem;
             if (old == null) return;
@@ -76,6 +91,14 @@ namespace QuickReplace
         {
             if (!ModEntry.Enabled || !___isDragging || ___currentRemove != 1 || ___currentItem == null
                 || ___currentItem.isDebugMenu) return;
+            if (___lastItem != null && !___lastItem.IsID("recharger")
+                && ChargerTargets.FindSpace(___currentItem, ___lastItem, ___lastInventory) != null)
+            {
+                bool zh = LocHelper.GetCurrentLocaleCode().StartsWith("zh", System.StringComparison.OrdinalIgnoreCase);
+                Text.Clear().AddLine(zh ? "松开鼠标，放入空位充电" : "Release to place the battery in an empty space");
+                OverlayHandler.current.ShowTooltip(Input.mousePosition, __instance.tooltipTranslation, Text.Build());
+                return;
+            }
             var charged = ChargerTargets.Find(___currentItem, ___lastItem, ___lastInventory);
             var old = charged ?? Targets.Find(___currentItem, ___lastItem, ___lastInventory)?.childItem;
             if (old == null) return;

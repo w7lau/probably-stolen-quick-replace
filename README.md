@@ -4,11 +4,11 @@
 
 把新滤芯拖到水壶上，或把新电池拖到电器上，就能直接换下旧的，不用先取出来。
 
-把电池拖到充电器上，或拖进充电器窗口，就能换出里面剩余电量最多的一块。只换电量比拖入的更高的，低电量和没电的都可以。拖入的留下充电，换出的回到原物品栏。按剩余电量（kJ）比较；没有电量更高的电池时按原方式放入。
+充电器有空位时，拖入电池会先放入空位。放不下时，才换出其中剩余电量最多、且电量比拖入电池更高的一块。拖入的留下充电，换出的回到原物品栏。
 
 旧件会放回新件原来的物品栏，放不下就不换。支持游戏允许安装的滤芯、电池等物品，暂不支持成叠物品。
 
-滴管吸液、滴液和容器间倒液体仍按原方式操作，不会把瓶子换出来。
+物品升级、滴管吸液、滴液和容器间倒液体仍按原方式操作。
 
 在游戏 Mod 管理中启用，并重启游戏。
 
@@ -18,11 +18,11 @@
 
 Drag a new filter onto a water pitcher, or a new battery onto an appliance, to replace the old one without removing it first.
 
-Drag a battery onto a charger or into its open window to take the battery with the most remaining energy, only if it has more charge than yours. Both empty and partly charged batteries work. The incoming battery stays to charge, and the other returns to the source inventory. Selection uses remaining kJ. If none has more charge, normal placement applies.
+Batteries go into empty charger space first. If there is no room, the mod swaps out the battery with the most remaining energy, provided it has more charge than the incoming one. The incoming battery stays to charge, and the other returns to the source inventory.
 
 The old item goes back to the inventory the new one came from. If there is no room, nothing is swapped. Works with filters, batteries and other items the device accepts. Stacks are not supported.
 
-Drawing, dripping and pouring liquids keep their normal behavior and do not swap out the bottle.
+Item upgrades, drawing, dripping and pouring liquids keep their normal behavior.
 
 Enable the mod in Mod management and restart the game.
 

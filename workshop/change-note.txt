@@ -1,3 +1,3 @@
-修复滴管向搅拌机里的瓶子加液体时误换瓶子的问题。滴管吸液、滴液和容器间倒液体保留原操作。
+修复工具箱里的超科技涡轮增压器升级时被换出来的问题。充电器有空位时先放入电池，放不下时才换出电量最高的电池。
 
-Fixed droppers swapping out bottles when adding liquid inside a blender. Drawing, dripping and pouring liquids retain their normal behavior.
+Fixed upgrading a hypertech turbo booster inside a toolbox swapping it out instead. Chargers now fill empty space first and only swap out the highest-energy battery when there is no room.

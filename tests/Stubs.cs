@@ -17,6 +17,9 @@ public class GameItem:GraphNodeStorage {
  public string name="item",id="",kind="";public bool owned=true,removable=true,destroyed;public int unitCount=1,charge=25,durability=12;
  public bool disposable;public int maxCharge=100;public bool IsID(string value)=>id==value;
  public bool liquidContainer;public int liquidVolume;
+ public Func<GameItem,bool> mayTarget;public bool canTarget=true;
+ public bool MayTarget(GameItem target)=>mayTarget?.Invoke(target)??false;
+ public bool CanTarget(GameItem target)=>canTarget&&MayTarget(target);
  public bool IsTag(string value)=>(value==PowerHelper.POWER_SOURCE_ITEM_TAG&&kind=="battery")||(value==WaterHelper.LIQUID_CONTAINER_TAG&&liquidContainer);
  public TagState GetTagReadonly(string key)=>new(){value=key==PowerHelper.POWER_SOURCE_ITEM_ENERGY?charge:maxCharge};
  public GridShape modifiedShape=new(); public GameInventory parentInventory;public List<GraphNodeStorage> children {get;}=new();

@@ -2,8 +2,9 @@
 using System.Reflection;
 using QuickReplace;
 
+try {
 int checks=0;
-void Check(bool ok,string message){checks++;if(!ok)throw new Exception(message);}
+void Check(bool ok,string message){checks++;if(!ok){Console.Error.WriteLine("FAIL: "+message);Environment.Exit(1);}}
 (GameItemElement n,GameItem o,GameSlotInventory slot,GameInventory src,GameItem device) Fixture(string kind="filter"){
 var device=new GameItem{id="device"};var src=new GameInventory();var slot=new GameSlotInventory{owner=device,mayInventoryAddItemFunc=(i,_)=>i.kind==kind&&i.id!="uv_filter"};
 var layout=new Layout();device.children.Add(layout);layout.children.Add(slot);
@@ -44,14 +45,14 @@ f=Fixture();ModEntry.Enabled=false;callArgs=new object[]{f.n,true,f.device,null,
 }
 // The charger uses a multi-item grid, unlike the existing one-item appliance slots.
 (GameItemElement n, GameInventory source, GameItem charger, GameInventory grid, GameItem low, GameItem high) ChargerFixture(){
-var charger=new GameItem{id="recharger"};var grid=new GameInventory{owner=charger,capacity=4,mayInventoryAddItemFunc=(i,_)=>i.kind=="battery"&&!i.disposable};
+var charger=new GameItem{id="recharger"};var grid=new GameInventory{owner=charger,capacity=2,mayInventoryAddItemFunc=(i,_)=>i.kind=="battery"&&!i.disposable};
 var layout=new Layout();charger.children.Add(layout);layout.children.Add(grid);
 var source=new GameInventory();var n=new GameItemElement{kind="battery",charge=0,modifiedShape=new(){x=5}};source.UncheckedAccept(n);
 var low=new GameItem{kind="battery",charge=40,modifiedShape=new(){x=0}};var high=new GameItem{kind="battery",charge=90,modifiedShape=new(){x=1}};
 grid.UncheckedAccept(low);grid.UncheckedAccept(high);return(n,source,charger,grid,low,high);}
 {
 var f=ChargerFixture();
-Check(ChargerTargets.Find(f.n,f.charger,null)==f.high,"charger body selects highest charge despite free space");
+Check(ChargerTargets.Find(f.n,f.charger,null)==f.high,"full charger body selects highest charge");
 Check(ChargerTargets.Find(f.n,null,f.grid)==f.high,"open charger grid selects highest");
 Check(ChargerTargets.Find(f.n,f.low,null)==f.high,"hovering a battery selects highest in same charger");
 f.low.maxCharge=40;f.high.maxCharge=100;
@@ -140,7 +141,7 @@ Check(callArgs[2]==f.charger&&(int)callArgs[4]==1,"no improvement leaves ordinar
 }
 }
 {
-var f=ChargerFixture();f.n.id="battery_type_2";f.n.charge=12;f.n.modifiedShape.width=2;
+var f=ChargerFixture();f.grid.capacity=4;f.n.id="battery_type_2";f.n.charge=12;f.n.modifiedShape.width=2;
 f.high.modifiedShape.x=2;f.high.modifiedShape.width=2;f.low.modifiedShape.width=2;
 Check(SwapLogic.TrySwap(f.n,ChargerTargets.Find(f.n,f.charger,null)),"partly charged larger battery swaps in full charger");
 Check(f.n.modifiedShape.x==2&&f.n.modifiedShape.width==2&&f.high.modifiedShape.x==5,"larger battery keeps correct cells");
@@ -212,4 +213,56 @@ var f=Fixture("filter");f.device.liquidContainer=true;f.n.id="kotton_fabric";f.o
 Check(Targets.Find(f.n,f.device,null)==f.slot&&SwapLogic.TrySwap(f.n,f.slot),"cloth replaces pitcher filter despite liquid-container owner");
 Check(SwapLogic.TrySwap(f.o,f.slot),"filter can replace cloth in pitcher");
 }
+// Free space takes priority, including when a battery inside the charger is hovered.
+foreach(var charge in new[]{0,12,100})
+foreach(var capacity in new[]{3,4})
+foreach(var hover in new[]{"body","grid","battery"}){
+var f=ChargerFixture();f.grid.capacity=capacity;f.n.charge=charge;
+f.n.mayTarget=t=>t==f.low||t==f.high; // Native battery-on-battery swap is also available.
+var hovered=hover=="body"?f.charger:hover=="battery"?f.low:null;
+var inventory=hover=="grid"?f.grid:null;
+Check(ChargerTargets.Find(f.n,hovered,inventory)==null,"free charger does not select an exchange: "+hover);
+ModEntry.Enabled=true;object[] dropArgs={f.n,true,hovered,inventory,1};
+typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,dropArgs);
+Check(f.n.parentInventory==f.source&&f.high.parentInventory==f.grid&&f.low.parentInventory==f.grid,"insertion is left to native code");
+Check((int)dropArgs[4]==1,"free charger preserves insertion count");
+Check(dropArgs[2]==(hover=="battery"?f.charger:hovered)&&dropArgs[3]==inventory,"battery hover uses charger insertion; body/grid retain native target");
+OverlayHandler.current.lastText="native insert";
+typeof(ReplaceHint).GetMethod("Postfix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,new object[]{new ItemMouseDragHandler(),f.n,true,hovered,inventory,1});
+Check(hover=="battery"?OverlayHandler.current.lastText.Contains("放入空位充电"):OverlayHandler.current.lastText=="native insert","free charger tooltip matches insertion");
+}
+{
+var f=ChargerFixture();f.grid.capacity=4;f.n.modifiedShape.width=2;f.high.modifiedShape.x=2;f.high.modifiedShape.width=2;
+Check(ChargerTargets.Find(f.n,f.charger,null)==f.high,"one empty cell cannot fit a two-cell battery; exchange remains available");
+Check(SwapLogic.TrySwap(f.n,f.high),"large incoming battery uses the space released by the old battery");
+}
+// Model the game's MayTarget contract for turbo upgrades and other tool interactions.
+foreach(var kind in new[]{"turbo_booster_adv","future_upgrade_tool","repair_tool"})
+foreach(var canUse in new[]{true,false}){
+var f=Fixture("tool");f.device.id="toolbox";f.n.id=kind;f.o.id="turbo_booster_hypertech";
+f.n.mayTarget=t=>t==f.o;f.n.canTarget=canUse;
+Check(Targets.Find(f.n,f.o,null)==null,"native item use wins over toolbox replacement: "+kind);
+object[] dropArgs={f.n,true,f.o,null,1};ModEntry.Enabled=true;
+typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,dropArgs);
+Original(f,"upgrade material and installed tool not exchanged");
+Check(dropArgs[2]==f.o&&(int)dropArgs[4]==1,"native upgrade/blocked-use target and count preserved");
+OverlayHandler.current.lastText="native upgrade";
+typeof(ReplaceHint).GetMethod("Postfix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,new object[]{new ItemMouseDragHandler(),f.n,true,f.o,null,1});
+Check(OverlayHandler.current.lastText=="native upgrade","native use tooltip preserved");
+// Removing the native interaction restores ordinary replacement.
+f.n.mayTarget=null;Check(Targets.Find(f.n,f.o,null)==f.slot,"ordinary tool replacement still available");
+}
+{
+var f=Fixture("tool");f.n.mayTarget=t=>t==f.device;
+Check(Targets.Find(f.n,f.device,null)==null,"native action on device wins before searching its occupied slots");
+var b=Fixture("battery");b.n.mayTarget=t=>t==b.o;
+Check(Targets.Find(b.n,b.device,null)==b.slot,"battery dragged onto appliance still replaces its installed battery");
+Check(Targets.Find(b.n,b.o,null)==null,"direct battery-on-battery use remains native outside charger");
+var c=ChargerFixture();c.n.mayTarget=t=>t==c.low||t==c.high;
+Check(ChargerTargets.Find(c.n,c.low,null)==c.high,"full charger still selects highest despite native battery swap");
+}
 Console.WriteLine($"PASS: {checks} checks (game doubles; no live gameplay claim)");
+} catch(Exception error) {
+Console.Error.WriteLine(error);
+Environment.Exit(1);
+}

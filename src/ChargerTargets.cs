@@ -12,15 +12,41 @@ namespace QuickReplace
                 && !PowerHelper.IsDisposablePowerSource(item)
                 && item.GetTagReadonly(PowerHelper.POWER_SOURCE_ITEM_MAX_ENERGY).GetInt() > 0;
 
-        internal static GameItem Find(GameItem incoming, GameItem hovered, GameInventory hoveredInventory)
+        private static GameItem GetCharger(GameItem incoming, GameItem hovered, GameInventory hoveredInventory)
         {
-            // Collect a battery only when it has more remaining energy than the incoming one.
-            // Dragging within the same charger remains ordinary rearrangement.
-            if (!Rechargeable(incoming) || incoming.unitCount != 1) return null;
+            if (!Rechargeable(incoming) || incoming.unitCount != 1
+                || !GeneralHelper.IsItemOwned(incoming) || !incoming.MayRemove()
+                || incoming.MaxNumRemove() < 1) return null;
             var charger = hovered != null && hovered.IsID("recharger")
                 ? hovered : (hovered?.parentInventory ?? hoveredInventory)?.GetParentItem();
             if (charger == null || !charger.IsID("recharger") || !GeneralHelper.IsItemOwned(charger)
                 || incoming.parentInventory?.GetParentItem() == charger) return null;
+            return charger;
+        }
+
+        internal static SlotMarker FindSpace(GameItem incoming, GameItem hovered, GameInventory hoveredInventory)
+        {
+            var charger = GetCharger(incoming, hovered, hoveredInventory);
+            if (charger == null) return null;
+            var inventories = new List<GameInventory>();
+            foreach (var child in charger.children) Inventories(child, charger, inventories);
+            foreach (var inventory in inventories)
+            {
+                if (!GeneralHelper.MayPlayerInsertInto(inventory)) continue;
+                // Use native shape/orientation rules, not the number of empty grid cells.
+                var space = inventory.TryFindOneValidInventorySlot(incoming);
+                if (space != null && space.inventory == inventory && space.targetItem == null
+                    && space.numTransfer == 1 && space.itemGridShape != null) return space;
+            }
+            return null;
+        }
+
+        internal static GameItem Find(GameItem incoming, GameItem hovered, GameInventory hoveredInventory)
+        {
+            // Fill usable empty space before exchanging a higher-energy battery.
+            // Dragging within the same charger remains ordinary rearrangement.
+            var charger = GetCharger(incoming, hovered, hoveredInventory);
+            if (charger == null || FindSpace(incoming, hovered, hoveredInventory) != null) return null;
 
             var inventories = new List<GameInventory>();
             foreach (var child in charger.children) Inventories(child, charger, inventories);
