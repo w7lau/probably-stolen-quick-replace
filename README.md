@@ -8,6 +8,8 @@
 
 旧件会放回新件原来的物品栏，放不下就不换。支持游戏允许安装的滤芯、电池等物品，暂不支持成叠物品。
 
+滴管吸液、滴液和容器间倒液体仍按原方式操作，不会把瓶子换出来。
+
 在游戏 Mod 管理中启用，并重启游戏。
 
 | 换滤芯 / Filters | 换电池 / Batteries |
@@ -19,6 +21,8 @@ Drag a new filter onto a water pitcher, or a new battery onto an appliance, to r
 Drag a battery onto a charger or into its open window to take the battery with the most remaining energy, only if it has more charge than yours. Both empty and partly charged batteries work. The incoming battery stays to charge, and the other returns to the source inventory. Selection uses remaining kJ. If none has more charge, normal placement applies.
 
 The old item goes back to the inventory the new one came from. If there is no room, nothing is swapped. Works with filters, batteries and other items the device accepts. Stacks are not supported.
+
+Drawing, dripping and pouring liquids keep their normal behavior and do not swap out the bottle.
 
 Enable the mod in Mod management and restart the game.
 

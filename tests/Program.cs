@@ -187,4 +187,29 @@ ModEntry.Enabled=true;charger.id="other_machine";shown=Display(grid);for(int i=0
 charger.id="recharger";a.modifiedShape.y=1;c.modifiedShape.x=0;
 shown=Display(grid);Check(shown[0]==c&&shown[1]==b&&shown[2]==a,"grid view orders rows then columns");
 }
+// Both a dropper and a bottle satisfy the blender's native liquid-container slot rule.
+// The mod must leave the native drop/tooltip arguments untouched for liquid interactions.
+foreach(var sourceKind in new[]{"dropper","water_bottle","water_pitcher","future_liquid_container"})
+foreach(var volume in new[]{0,10,100})
+foreach(var hover in new[]{"bottle","device","slot"}){
+var f=Fixture("liquid");f.device.id="blender";f.n.id=sourceKind;
+f.n.liquidContainer=true;f.o.liquidContainer=true;f.n.liquidVolume=volume;f.o.liquidVolume=500;
+GameItem hovered=hover=="bottle"?f.o:hover=="device"?f.device:null;
+GameInventory hoveredInventory=hover=="slot"?f.slot:null;
+Check(Targets.Find(f.n,hovered,hoveredInventory)==null,"liquid interaction is not a replacement: "+sourceKind+"/"+volume+"/"+hover);
+Check(!SwapLogic.TrySwap(f.n,f.slot),"core swap rejects liquid-for-liquid replacement");
+Original(f,"liquid containers stay in their original inventories");
+ModEntry.Enabled=true;object[] liquidArgs={f.n,true,hovered,hoveredInventory,1};
+typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,liquidArgs);
+Check(liquidArgs[2]==hovered&&liquidArgs[3]==hoveredInventory&&(int)liquidArgs[4]==1,"native transfer keeps original drop target and count");
+OverlayHandler.current.lastText="native pour/draw tooltip";
+typeof(ReplaceHint).GetMethod("Postfix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,new object[]{new ItemMouseDragHandler(),f.n,true,hovered,hoveredInventory,1});
+Check(OverlayHandler.current.lastText=="native pour/draw tooltip","native liquid tooltip not replaced");
+Check(f.n.liquidVolume==volume&&f.o.liquidVolume==500,"replacement layer does not alter mixture or liquid volume");
+}
+{
+var f=Fixture("filter");f.device.liquidContainer=true;f.n.id="kotton_fabric";f.o.id="water_filter";
+Check(Targets.Find(f.n,f.device,null)==f.slot&&SwapLogic.TrySwap(f.n,f.slot),"cloth replaces pitcher filter despite liquid-container owner");
+Check(SwapLogic.TrySwap(f.o,f.slot),"filter can replace cloth in pitcher");
+}
 Console.WriteLine($"PASS: {checks} checks (game doubles; no live gameplay claim)");

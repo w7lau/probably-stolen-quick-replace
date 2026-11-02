@@ -12,6 +12,10 @@ namespace QuickReplace
             var slot = old?.parentInventory;
             var owner = slot?.GetParentItem();
             return incoming != null && old != null && incoming != old && owner != null
+                // Liquid containers act on one another: pour, drip, or draw liquid.
+                // Keep that native interaction even when both fit a machine's bottle slot.
+                && !(incoming.IsTag(WaterHelper.LIQUID_CONTAINER_TAG)
+                    && old.IsTag(WaterHelper.LIQUID_CONTAINER_TAG))
                 && incoming.unitCount == 1 && old.unitCount == 1
                 && incoming.parentInventory != null && incoming.parentInventory != slot
                 && slot.mayInventoryAddItemFunc != null

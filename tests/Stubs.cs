@@ -16,7 +16,8 @@ public class GridShapeBuilder {GridShape s; public GridShapeBuilder(GridShape a)
 public class GameItem:GraphNodeStorage {
  public string name="item",id="",kind="";public bool owned=true,removable=true,destroyed;public int unitCount=1,charge=25,durability=12;
  public bool disposable;public int maxCharge=100;public bool IsID(string value)=>id==value;
- public bool IsTag(string value)=>value==PowerHelper.POWER_SOURCE_ITEM_TAG&&kind=="battery";
+ public bool liquidContainer;public int liquidVolume;
+ public bool IsTag(string value)=>(value==PowerHelper.POWER_SOURCE_ITEM_TAG&&kind=="battery")||(value==WaterHelper.LIQUID_CONTAINER_TAG&&liquidContainer);
  public TagState GetTagReadonly(string key)=>new(){value=key==PowerHelper.POWER_SOURCE_ITEM_ENERGY?charge:maxCharge};
  public GridShape modifiedShape=new(); public GameInventory parentInventory;public List<GraphNodeStorage> children {get;}=new();
  public bool MayRemove()=>parentInventory!=null&&removable&&!parentInventory.removeLocked;public int MaxNumRemove()=>removable?unitCount:0;public void Validate(){} public bool IsDestroyed()=>destroyed;
@@ -39,6 +40,7 @@ public class SlotMarker {public GameItem item,targetItem;public GameInventory in
 public static class GeneralHelper {public static bool IsItemOwned(GameItem i)=>i?.owned==true;public static bool MayPlayerInsertInto(GameInventory i)=>i!=null&&!i.insertLocked&&(i.owner==null||i.owner.owned);}
 
 public static class LocHelper {public static string GetCurrentLocaleCode()=>"zh";}
+public static class WaterHelper {public const string LIQUID_CONTAINER_TAG="LIQUID_CONTAINER_TAG";}
 public class TagState {public int value;public int GetInt()=>value;}
 public static class PowerHelper {
  public const string POWER_SOURCE_ITEM_ENERGY="power_source_item_energy",POWER_SOURCE_ITEM_MAX_ENERGY="power_source_item_max_energy",POWER_SOURCE_ITEM_TAG="power_source_item";

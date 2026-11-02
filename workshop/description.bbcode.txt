@@ -4,6 +4,8 @@
 
 旧件会放回新件原来的物品栏，放不下就不换。支持游戏允许安装的滤芯、电池等物品，暂不支持成叠物品。
 
+滴管吸液、滴液和容器间倒液体仍按原方式操作，不会把瓶子换出来。
+
 订阅后在 Mod 管理中启用，并重启游戏。
 
 Drag a new filter onto a water pitcher, or a new battery onto an appliance, to replace the old one without removing it first.
@@ -11,6 +13,8 @@ Drag a new filter onto a water pitcher, or a new battery onto an appliance, to r
 Drag a low or empty battery onto a charger to swap it for the one with the most remaining energy. Only swaps for a battery with more charge, even when the charger is full.
 
 The old item goes back to the inventory the new one came from. If there is no room, nothing is swapped. Works with filters, batteries and other items the device accepts. Stacks are not supported.
+
+Drawing, dripping and pouring liquids keep their normal behavior and do not swap out the bottle.
 
 Subscribe, enable the mod in Mod management, and restart the game.
 
