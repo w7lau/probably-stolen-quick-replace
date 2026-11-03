@@ -35,7 +35,8 @@ namespace QuickReplace
             var direct = hoveredInventory as GameSlotInventory ?? hovered?.parentInventory as GameSlotInventory;
             if (direct != null && (hovered == null || direct.childItem == hovered))
                 return SwapLogic.Eligible(incoming, direct) ? direct : null;
-            if (hovered == null || hovered == incoming || !GeneralHelper.IsItemOwned(hovered)) return null;
+            // The game also permits installing player parts on a customer's service gun.
+            if (hovered == null || hovered == incoming || !GeneralHelper.MayPlayerInsertInto(hovered)) return null;
             var slots = new List<GameSlotInventory>();
             // Start below the item itself, but stop at every inventory/item boundary.
             foreach (var child in hovered.children) Slots(child, hovered, slots);

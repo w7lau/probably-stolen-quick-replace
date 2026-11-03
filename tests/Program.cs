@@ -261,6 +261,65 @@ Check(Targets.Find(b.n,b.o,null)==null,"direct battery-on-battery use remains na
 var c=ChargerFixture();c.n.mayTarget=t=>t==c.low||t==c.high;
 Check(ChargerTargets.Find(c.n,c.low,null)==c.high,"full charger still selects highest despite native battery swap");
 }
+// Native gun slots allow player parts on a customer's service gun.
+// Cover every standard category, plus each of the three special slots.
+foreach(var customerGun in new[]{false,true})
+foreach(var mount in new[]{"stock","rail","magazine","underbarrel","barrel","special1","special2","special3"})
+foreach(var hover in new[]{"gun","part","slot"}){
+var f=Fixture(mount);f.device.id="gun";f.device.owned=!customerGun;f.device.serviceGun=customerGun;
+f.n.id="new_"+mount;f.o.id="old_"+mount;f.n.durability=44;f.o.durability=23;
+var hovered=hover=="gun"?f.device:hover=="part"?f.o:null;
+var inv=hover=="slot"?f.slot:null;
+Check(f.n.MayRemove()&&f.o.MayRemove()&&GeneralHelper.MayPlayerInsertInto(f.slot),"native service gun rules permit exchanging player parts");
+Check(Targets.Find(f.n,hovered,inv)==f.slot,"gun attachment target: "+customerGun+"/"+mount+"/"+hover);
+int callbacks=0,displayedStat=23;f.slot.changed=()=>{callbacks++;displayedStat=f.slot.childItem?.durability??0;};
+OverlayHandler.current.lastText="native full slot";ModEntry.Enabled=true;
+typeof(ReplaceHint).GetMethod("Postfix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,new object[]{new ItemMouseDragHandler(),f.n,true,hovered,inv,1});
+Check(OverlayHandler.current.lastText.Contains("换下")&&callbacks==0,"gun replacement hover is read only");
+object[] callArgs={f.n,true,hovered,inv,1};
+typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,callArgs);
+Check(f.n.parentInventory==f.slot&&f.o.parentInventory==f.src,"new gun part installed and old part returned");
+Check(f.n.durability==44&&f.o.durability==23&&f.device.owned==!customerGun,"part state and gun ownership preserved");
+Check(callbacks==2&&displayedStat==44,"native removal/addition callbacks refresh gun stats");
+Check((int)callArgs[4]==0&&callArgs[2]==null&&callArgs[3]==null,"gun exchange consumes native follow-up");
+}
+foreach(var blocked in new[]{"foreign-gun","customer-part","foreign-incoming","locked","nonremovable","incompatible","other-slot-conflict","wrong-weapon"}){
+var f=Fixture("rail");f.device.owned=false;f.device.serviceGun=true;
+if(blocked=="foreign-gun")f.device.serviceGun=false;
+if(blocked=="customer-part")f.o.owned=false;
+if(blocked=="foreign-incoming")f.n.owned=false;
+if(blocked=="locked")f.slot.insertLocked=true;
+if(blocked=="nonremovable")f.o.removable=false;
+if(blocked=="incompatible")f.n.kind="barrel";
+if(blocked=="other-slot-conflict")f.slot.mayInventoryAddItemFunc=(i,slot)=>false;
+if(blocked=="wrong-weapon")f.n.mayInventoryAddItemFunc=(i,slot)=>slot.owner!=f.device;
+Check(Targets.Find(f.n,f.device,null)==null&&Targets.Find(f.n,f.o,null)==null&&Targets.Find(f.n,null,f.slot)==null,"native gun restriction preserved: "+blocked);
+Check(!SwapLogic.TrySwap(f.n,f.slot),"core swap respects gun restriction: "+blocked);Original(f,"blocked gun swap preserves both items");
+}
+foreach(var failure in new[]{"no-room","return-old","insert-new","throw-insert"}){
+var f=Fixture("stock");f.device.owned=false;f.device.serviceGun=true;
+f.n.durability=44;f.o.durability=23;int displayedStat=23;f.slot.changed=()=>displayedStat=f.slot.childItem?.durability??0;
+if(failure=="no-room"){f.src.capacity=1;f.o.modifiedShape.width=2;}
+if(failure=="return-old")f.src.failAcceptOnce=f.o;
+if(failure=="insert-new")f.slot.failAcceptOnce=f.n;
+if(failure=="throw-insert")f.slot.throwAcceptOnce=f.n;
+try{Check(!SwapLogic.TrySwap(f.n,f.slot),"service gun rollback: "+failure);}catch(InvalidOperationException){Check(failure=="throw-insert","expected callback failure only");}
+Original(f,"service gun rollback restores parts");Check(displayedStat==23,"rollback restores native gun stats");
+}
+{
+var f=Fixture("special");f.device.owned=false;f.device.serviceGun=true;
+var empty=new GameSlotInventory{owner=f.device,mayInventoryAddItemFunc=(i,_)=>i.kind=="special"};((Layout)f.device.children[0]).children.Add(empty);
+Check(Targets.Find(f.n,f.device,null)==null,"empty compatible service-gun slot keeps normal insertion");
+Check(Targets.Find(f.n,f.o,null)==f.slot,"explicit old part still identifies which special slot to replace");
+f.n.mayTarget=t=>t==f.device;Check(Targets.Find(f.n,f.device,null)==null,"native gun repair/upgrade takes priority");
+}
+{
+var f=Fixture("rail");f.device.owned=false;f.device.serviceGun=true;
+var otherGun=new GameItem{serviceGun=true,owned=false};var otherSlot=new GameSlotInventory{owner=otherGun,mayInventoryAddItemFunc=(i,_)=>i.kind=="rail"};
+f.src.Expel(f.n);otherSlot.UncheckedAccept(f.n);
+Check(SwapLogic.TrySwap(f.n,f.slot),"owned parts can exchange between compatible service-gun slots");
+Check(otherSlot.childItem==f.o&&f.slot.childItem==f.n,"cross-gun replacement preserves both attachment positions");
+}
 Console.WriteLine($"PASS: {checks} checks (game doubles; no live gameplay claim)");
 } catch(Exception error) {
 Console.Error.WriteLine(error);

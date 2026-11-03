@@ -20,7 +20,8 @@ namespace QuickReplace
                 && incoming.parentInventory != null && incoming.parentInventory != slot
                 && slot.mayInventoryAddItemFunc != null
                 && GeneralHelper.IsItemOwned(incoming) && GeneralHelper.IsItemOwned(old)
-                && GeneralHelper.IsItemOwned(owner)
+                // Keep both parts player-owned; the native insertion rule below decides
+                // whether the device is editable, including a customer's service gun.
                 && incoming.MayRemove() && old.MayRemove()
                 && incoming.MaxNumRemove() >= 1 && old.MaxNumRemove() >= 1
                 && GeneralHelper.MayPlayerInsertInto(slot)
