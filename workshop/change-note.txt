@@ -1,3 +1,3 @@
-修复顾客改装枪上的配件无法直接替换的问题。自己装上的配件可以直接更换，旧件放回原物品栏。
+打开充电器后，可直接拖到指定电池上交换，不再自动选走电量最多的一块。拖到充电器本体的逻辑保持不变。修复替换报错时未能正常结束拖动的问题。
 
-Fixed direct replacement of player-owned attachments on customer service guns. Swap an installed attachment directly and return the old one to the source inventory.
+Inside an open charger, drop onto a specific battery to swap with it without automatically selecting the highest-charge battery. Dropping onto the charger itself works as before. Fixed drag cleanup being interrupted by replacement errors.

@@ -4,6 +4,11 @@ using QuickReplace;
 
 try {
 int checks=0;
+bool lastDropCancelled=false;
+void Drop(MethodInfo method, object[] dropCallData, bool cancelled=false){
+    var full=new object[6];Array.Copy(dropCallData,full,5);full[5]=cancelled;
+    method.Invoke(null,full);Array.Copy(full,dropCallData,5);lastDropCancelled=(bool)full[5];
+}
 void Check(bool ok,string message){checks++;if(!ok){Console.Error.WriteLine("FAIL: "+message);Environment.Exit(1);}}
 (GameItemElement n,GameItem o,GameSlotInventory slot,GameInventory src,GameItem device) Fixture(string kind="filter"){
 var device=new GameItem{id="device"};var src=new GameInventory();var slot=new GameSlotInventory{owner=device,mayInventoryAddItemFunc=(i,_)=>i.kind==kind&&i.id!="uv_filter"};
@@ -38,10 +43,10 @@ var f=Fixture();var empty=new GameSlotInventory{owner=f.device,mayInventoryAddIt
 var f=Fixture();var bag=new GameItem();var inv=new GameInventory{owner=bag};bag.children.Add(inv);inv.items.Add(f.device);Check(Targets.Find(f.n,bag,null)==null,"no nested bag replacement");
 }
 {
-var f=Fixture();ModEntry.Enabled=true;var prefix=typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static);object[] callArgs={f.n,true,f.device,null,1};prefix.Invoke(null,callArgs);Check(f.n.parentInventory==f.slot&&(int)callArgs[4]==0&&callArgs[2]==null&&callArgs[3]==null,"native cleanup receives cleared targets after swap");
-f=Fixture();callArgs=new object[]{f.n,true,null,null,1};prefix.Invoke(null,callArgs);Original(f,"reset/cancel no replacement");
-f=Fixture();f.src.capacity=1;f.o.modifiedShape.width=2;callArgs=new object[]{f.n,true,f.device,null,1};prefix.Invoke(null,callArgs);Original(f,"failed replacement preserves items");Check((int)callArgs[4]==0&&callArgs[2]==null&&callArgs[3]==null,"failed replacement cancels native follow-up use");
-f=Fixture();ModEntry.Enabled=false;callArgs=new object[]{f.n,true,f.device,null,1};prefix.Invoke(null,callArgs);Original(f,"disabled mod no replacement");
+var f=Fixture();ModEntry.Enabled=true;var prefix=typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static);object[] callArgs={f.n,true,f.device,null,1};Drop(prefix,callArgs);Check(f.n.parentInventory==f.slot&&(int)callArgs[4]==0&&callArgs[2]==null&&callArgs[3]==null,"native cleanup receives cleared targets after swap");
+f=Fixture();callArgs=new object[]{f.n,true,null,null,1};Drop(prefix,callArgs);Original(f,"reset/cancel no replacement");
+f=Fixture();f.src.capacity=1;f.o.modifiedShape.width=2;callArgs=new object[]{f.n,true,f.device,null,1};Drop(prefix,callArgs);Original(f,"failed replacement preserves items");Check((int)callArgs[4]==0&&callArgs[2]==null&&callArgs[3]==null,"failed replacement cancels native follow-up use");
+f=Fixture();ModEntry.Enabled=false;callArgs=new object[]{f.n,true,f.device,null,1};Drop(prefix,callArgs);Original(f,"disabled mod no replacement");
 }
 // The charger uses a multi-item grid, unlike the existing one-item appliance slots.
 (GameItemElement n, GameInventory source, GameItem charger, GameInventory grid, GameItem low, GameItem high) ChargerFixture(){
@@ -53,8 +58,8 @@ grid.UncheckedAccept(low);grid.UncheckedAccept(high);return(n,source,charger,gri
 {
 var f=ChargerFixture();
 Check(ChargerTargets.Find(f.n,f.charger,null)==f.high,"full charger body selects highest charge");
-Check(ChargerTargets.Find(f.n,null,f.grid)==f.high,"open charger grid selects highest");
-Check(ChargerTargets.Find(f.n,f.low,null)==f.high,"hovering a battery selects highest in same charger");
+Check(ChargerTargets.Find(f.n,null,f.grid)==null,"open charger grid preserves native placement");
+Check(ChargerTargets.Find(f.n,f.low,null)==null,"hovering a battery preserves native targeted exchange");
 f.low.maxCharge=40;f.high.maxCharge=100;
 Check(ChargerTargets.Find(f.n,f.charger,null)==f.high,"remaining energy beats percentage: 90 kJ vs full 40 kJ");
 f.high.charge=40;Check(ChargerTargets.Find(f.n,f.charger,null)==f.low,"ties keep stable inventory order");
@@ -112,14 +117,14 @@ Check(slot.childItem==f.high&&f.n.parentInventory==f.grid,"charged battery retur
 }
 {
 var prefix=typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static);
-var f=ChargerFixture();ModEntry.Enabled=true;object[] callArgs={f.n,true,f.charger,null,1};prefix.Invoke(null,callArgs);
+var f=ChargerFixture();ModEntry.Enabled=true;object[] callArgs={f.n,true,f.charger,null,1};Drop(prefix,callArgs);
 Check(f.n.parentInventory==f.grid&&f.high.parentInventory==f.source,"drop hook chooses charger route");
 Check((int)callArgs[4]==0&&callArgs[2]==null&&callArgs[3]==null,"charger consumes drop to avoid a second native transfer");
-f=ChargerFixture();f.source.capacity=1;f.n.modifiedShape.x=0;f.high.modifiedShape.width=2;callArgs=new object[]{f.n,true,null,f.grid,1};prefix.Invoke(null,callArgs);
+f=ChargerFixture();f.source.capacity=1;f.n.modifiedShape.x=0;f.high.modifiedShape.width=2;callArgs=new object[]{f.n,true,f.charger,null,1};Drop(prefix,callArgs);
 Check(f.n.parentInventory==f.source&&f.high.parentInventory==f.grid&&(int)callArgs[4]==0&&callArgs[3]==null,"no space cancels charger drop without native follow-up");
 foreach(var guard in new[]{"disabled","cancelled","multi","not-dragging","debug"}){
 f=ChargerFixture();ModEntry.Enabled=guard!="disabled";f.n.isDebugMenu=guard=="debug";
-callArgs=new object[]{f.n,guard!="not-dragging",guard=="cancelled"?null:f.charger,null,guard=="multi"?2:1};prefix.Invoke(null,callArgs);
+callArgs=new object[]{f.n,guard!="not-dragging",guard=="cancelled"?null:f.charger,null,guard=="multi"?2:1};Drop(prefix,callArgs);
 Check(f.n.parentInventory==f.source&&f.high.parentInventory==f.grid,"charger drag guard: "+guard);
 }
 }
@@ -128,9 +133,9 @@ foreach(var charge in new[]{0,1,39,40,89,90,91,100}){
 var f=ChargerFixture();f.n.charge=charge;f.grid.capacity=2;
 var expected=charge<90?f.high:null;
 Check(ChargerTargets.Find(f.n,f.charger,null)==expected,"charge boundary on charger body: "+charge);
-Check(ChargerTargets.Find(f.n,null,f.grid)==expected,"charge boundary in charger window: "+charge);
+Check(ChargerTargets.Find(f.n,null,f.grid)==null,"charger window never auto-selects: "+charge);
 var prefix=typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static);
-ModEntry.Enabled=true;object[] callArgs={f.n,true,f.charger,null,1};prefix.Invoke(null,callArgs);
+ModEntry.Enabled=true;object[] callArgs={f.n,true,f.charger,null,1};Drop(prefix,callArgs);
 if(expected!=null){
 Check(f.n.parentInventory==f.grid&&f.high.parentInventory==f.source,"low battery swaps in full charger: "+charge);
 Check(f.n.charge==charge&&f.high.charge==90,"low battery swap preserves both charges: "+charge);
@@ -156,9 +161,9 @@ Check(f.n.parentInventory==f.source&&f.high.parentInventory==f.grid,"hover is re
 // Reproduce native append-on-insert ordering, separately from the visible grid positions.
 System.Collections.Generic.List<GameItem> Display(GameGridInventory grid){
 var raw=new System.Collections.Generic.List<GameItem>(grid.items);
-object[] args={grid,raw};
-typeof(ChargerDisplayOrder).GetMethod("Postfix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,args);
-return (System.Collections.Generic.List<GameItem>)args[1];}
+object[] dropCallData={grid,raw};
+typeof(ChargerDisplayOrder).GetMethod("Postfix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,dropCallData);
+return (System.Collections.Generic.List<GameItem>)dropCallData[1];}
 foreach(var replacedIndex in new[]{0,1,2,3}){
 var charger=new GameItem{id="recharger"};var grid=new GameGridInventory{owner=charger,capacity=4,mayInventoryAddItemFunc=(i,_)=>i.kind=="battery"};
 var cells=new GameItem[4];for(int i=0;i<4;i++){cells[i]=new GameItem{kind="battery",charge=i==replacedIndex?90:30,modifiedShape=new(){x=i}};grid.UncheckedAccept(cells[i]);}
@@ -201,7 +206,7 @@ Check(Targets.Find(f.n,hovered,hoveredInventory)==null,"liquid interaction is no
 Check(!SwapLogic.TrySwap(f.n,f.slot),"core swap rejects liquid-for-liquid replacement");
 Original(f,"liquid containers stay in their original inventories");
 ModEntry.Enabled=true;object[] liquidArgs={f.n,true,hovered,hoveredInventory,1};
-typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,liquidArgs);
+Drop(typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static),liquidArgs);
 Check(liquidArgs[2]==hovered&&liquidArgs[3]==hoveredInventory&&(int)liquidArgs[4]==1,"native transfer keeps original drop target and count");
 OverlayHandler.current.lastText="native pour/draw tooltip";
 typeof(ReplaceHint).GetMethod("Postfix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,new object[]{new ItemMouseDragHandler(),f.n,true,hovered,hoveredInventory,1});
@@ -213,7 +218,7 @@ var f=Fixture("filter");f.device.liquidContainer=true;f.n.id="kotton_fabric";f.o
 Check(Targets.Find(f.n,f.device,null)==f.slot&&SwapLogic.TrySwap(f.n,f.slot),"cloth replaces pitcher filter despite liquid-container owner");
 Check(SwapLogic.TrySwap(f.o,f.slot),"filter can replace cloth in pitcher");
 }
-// Free space takes priority, including when a battery inside the charger is hovered.
+// Body drops prefer free space; inside-window drops retain their exact native targets.
 foreach(var charge in new[]{0,12,100})
 foreach(var capacity in new[]{3,4})
 foreach(var hover in new[]{"body","grid","battery"}){
@@ -223,13 +228,13 @@ var hovered=hover=="body"?f.charger:hover=="battery"?f.low:null;
 var inventory=hover=="grid"?f.grid:null;
 Check(ChargerTargets.Find(f.n,hovered,inventory)==null,"free charger does not select an exchange: "+hover);
 ModEntry.Enabled=true;object[] dropArgs={f.n,true,hovered,inventory,1};
-typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,dropArgs);
+Drop(typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static),dropArgs);
 Check(f.n.parentInventory==f.source&&f.high.parentInventory==f.grid&&f.low.parentInventory==f.grid,"insertion is left to native code");
 Check((int)dropArgs[4]==1,"free charger preserves insertion count");
-Check(dropArgs[2]==(hover=="battery"?f.charger:hovered)&&dropArgs[3]==inventory,"battery hover uses charger insertion; body/grid retain native target");
+Check(dropArgs[2]==hovered&&dropArgs[3]==inventory,"body, battery and grid keep their native targets with free space");
 OverlayHandler.current.lastText="native insert";
 typeof(ReplaceHint).GetMethod("Postfix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,new object[]{new ItemMouseDragHandler(),f.n,true,hovered,inventory,1});
-Check(hover=="battery"?OverlayHandler.current.lastText.Contains("放入空位充电"):OverlayHandler.current.lastText=="native insert","free charger tooltip matches insertion");
+Check(OverlayHandler.current.lastText=="native insert","inside charger preserves native tooltip");
 }
 {
 var f=ChargerFixture();f.grid.capacity=4;f.n.modifiedShape.width=2;f.high.modifiedShape.x=2;f.high.modifiedShape.width=2;
@@ -243,7 +248,7 @@ var f=Fixture("tool");f.device.id="toolbox";f.n.id=kind;f.o.id="turbo_booster_hy
 f.n.mayTarget=t=>t==f.o;f.n.canTarget=canUse;
 Check(Targets.Find(f.n,f.o,null)==null,"native item use wins over toolbox replacement: "+kind);
 object[] dropArgs={f.n,true,f.o,null,1};ModEntry.Enabled=true;
-typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,dropArgs);
+Drop(typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static),dropArgs);
 Original(f,"upgrade material and installed tool not exchanged");
 Check(dropArgs[2]==f.o&&(int)dropArgs[4]==1,"native upgrade/blocked-use target and count preserved");
 OverlayHandler.current.lastText="native upgrade";
@@ -259,7 +264,7 @@ var b=Fixture("battery");b.n.mayTarget=t=>t==b.o;
 Check(Targets.Find(b.n,b.device,null)==b.slot,"battery dragged onto appliance still replaces its installed battery");
 Check(Targets.Find(b.n,b.o,null)==null,"direct battery-on-battery use remains native outside charger");
 var c=ChargerFixture();c.n.mayTarget=t=>t==c.low||t==c.high;
-Check(ChargerTargets.Find(c.n,c.low,null)==c.high,"full charger still selects highest despite native battery swap");
+Check(ChargerTargets.Find(c.n,c.low,null)==null,"full charger preserves native selected battery swap");
 }
 // Native gun slots allow player parts on a customer's service gun.
 // Cover every standard category, plus each of the three special slots.
@@ -277,7 +282,7 @@ OverlayHandler.current.lastText="native full slot";ModEntry.Enabled=true;
 typeof(ReplaceHint).GetMethod("Postfix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,new object[]{new ItemMouseDragHandler(),f.n,true,hovered,inv,1});
 Check(OverlayHandler.current.lastText.Contains("换下")&&callbacks==0,"gun replacement hover is read only");
 object[] callArgs={f.n,true,hovered,inv,1};
-typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,callArgs);
+Drop(typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static),callArgs);
 Check(f.n.parentInventory==f.slot&&f.o.parentInventory==f.src,"new gun part installed and old part returned");
 Check(f.n.durability==44&&f.o.durability==23&&f.device.owned==!customerGun,"part state and gun ownership preserved");
 Check(callbacks==2&&displayedStat==44,"native removal/addition callbacks refresh gun stats");
@@ -319,6 +324,45 @@ var otherGun=new GameItem{serviceGun=true,owned=false};var otherSlot=new GameSlo
 f.src.Expel(f.n);otherSlot.UncheckedAccept(f.n);
 Check(SwapLogic.TrySwap(f.n,f.slot),"owned parts can exchange between compatible service-gun slots");
 Check(otherSlot.childItem==f.o&&f.slot.childItem==f.n,"cross-gun replacement preserves both attachment positions");
+}
+// The open charger never auto-selects a different battery, regardless of charge/space.
+foreach(var capacity in new[]{2,3})
+foreach(var charge in new[]{0,40,100}){
+var f=ChargerFixture();f.grid.capacity=capacity;f.n.charge=charge;
+f.n.mayTarget=t=>t==f.low||t==f.high;
+foreach(var target in new[]{f.low,f.high}){
+object[] dropCallData={f.n,true,target,null,1};ModEntry.Enabled=true;
+Drop(typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static),dropCallData);
+Check(dropCallData[2]==target&&(int)dropCallData[4]==1&&!lastDropCancelled,"manual battery selection is untouched");
+Check(f.n.parentInventory==f.source&&f.low.parentInventory==f.grid&&f.high.parentInventory==f.grid,"mod does not preempt native manual exchange");
+// Model native MayBatterySwap -> SwapItemsInPlace for the selected item only.
+Check(f.n.MayTarget(target)&&SwapLogic.TrySwap(f.n,target),"selected battery can exchange, even when it has less energy");
+Check(target.parentInventory==f.source&&f.n.parentInventory==f.grid,"exact selected battery was taken out");
+Check(SwapLogic.TrySwap(target,f.n),"reset manual exchange fixture");
+}
+}
+// Hook boundary: exceptions must roll back and return consumed arguments to native cleanup.
+foreach(var failure in new[]{"insert-new","source-remove","target-remove","return-old","target-query"}){
+var f=Fixture("filter");ModEntry.Enabled=true;
+if(failure=="insert-new")f.slot.throwAcceptOnce=f.n;
+if(failure=="return-old")f.src.throwAcceptOnce=f.o;
+if(failure=="source-remove")f.src.changed=()=>{f.src.changed=null;throw new InvalidOperationException("remove callback");};
+if(failure=="target-remove")f.slot.changed=()=>{f.slot.changed=null;throw new InvalidOperationException("remove callback");};
+if(failure=="target-query")f.slot.mayInventoryAddItemFunc=(i,_)=>throw new InvalidOperationException("predicate callback");
+object[] dropCallData={f.n,true,f.device,null,1};
+int errors=UnityEngine.Debug.errors.Count;
+Drop(typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static),dropCallData);
+Original(f,"hook rollback restores both items after "+failure);
+Check((int)dropCallData[4]==0&&dropCallData[2]==null&&dropCallData[3]==null&&lastDropCancelled,"failed hook cancels all native transfer paths");
+Check(UnityEngine.Debug.errors.Count==errors+1,"callback failure is logged");
+}
+{
+var f=Fixture();object[] dropCallData={f.n,true,f.device,null,1};ModEntry.Enabled=true;
+Drop(typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static),dropCallData,true);
+Original(f,"explicit native cancellation must not swap even if stale targets remain");
+f=Fixture();dropCallData=new object[]{f.n,true,f.device,null,1};
+Drop(typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static),dropCallData);
+Check(lastDropCancelled,"successful swap also suppresses machinery-tab fallback");
 }
 Console.WriteLine($"PASS: {checks} checks (game doubles; no live gameplay claim)");
 } catch(Exception error) {

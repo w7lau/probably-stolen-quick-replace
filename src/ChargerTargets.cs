@@ -17,8 +17,9 @@ namespace QuickReplace
             if (!Rechargeable(incoming) || incoming.unitCount != 1
                 || !GeneralHelper.IsItemOwned(incoming) || !incoming.MayRemove()
                 || incoming.MaxNumRemove() < 1) return null;
-            var charger = hovered != null && hovered.IsID("recharger")
-                ? hovered : (hovered?.parentInventory ?? hoveredInventory)?.GetParentItem();
+            // Auto-selection belongs only to a drop on the appliance body. Inside its
+            // window, preserve native placement and battery-on-battery exchanges.
+            var charger = hovered != null && hovered.IsID("recharger") ? hovered : null;
             if (charger == null || !charger.IsID("recharger") || !GeneralHelper.IsItemOwned(charger)
                 || incoming.parentInventory?.GetParentItem() == charger) return null;
             return charger;

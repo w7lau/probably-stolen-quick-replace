@@ -53,32 +53,41 @@ namespace QuickReplace
     internal static class ReplaceOnDrop
     {
         private static void Prefix(GameItemElement ___currentItem, bool ___isDragging,
-            ref GameItem ___lastItem, ref GameInventory ___lastInventory, ref int ___currentRemove)
+            ref GameItem ___lastItem, ref GameInventory ___lastInventory, ref int ___currentRemove,
+            ref bool cancelled)
         {
-            if (!ModEntry.Enabled || !___isDragging || ___currentRemove != 1 || ___currentItem == null
+            if (cancelled || !ModEntry.Enabled || !___isDragging || ___currentRemove != 1 || ___currentItem == null
                 || ___currentItem.IsDestroyed() || ___currentItem.isDebugMenu) return;
             // EndDrag is also called by reset/cancel. A reset clears both targets first.
             if (___lastItem == null && ___lastInventory == null) return;
-            // A battery under the cursor would otherwise invoke the game's battery swap.
-            // Route it to the charger's normal insertion path while usable space remains.
-            if (___lastItem != null && !___lastItem.IsID("recharger"))
+            bool consumed = false;
+            try
             {
-                var space = ChargerTargets.FindSpace(___currentItem, ___lastItem, ___lastInventory);
-                if (space != null)
+                var old = ChargerTargets.Find(___currentItem, ___lastItem, ___lastInventory)
+                    ?? Targets.Find(___currentItem, ___lastItem, ___lastInventory)?.childItem;
+                if (old == null) return;
+                consumed = true;
+                SwapLogic.TrySwap(___currentItem, old);
+            }
+            catch (System.Exception error)
+            {
+                // TrySwap rolls back in finally. Do not let a callback exception skip
+                // the game's EndDrag cleanup and leave the held visual attached.
+                consumed = true;
+                Debug.LogError("[QuickReplace] Replacement cancelled: " + error);
+            }
+            finally
+            {
+                if (consumed)
                 {
-                    ___lastItem = space.inventory.GetParentItem();
+                    ___currentRemove = 0;
+                    ___lastItem = null;
                     ___lastInventory = null;
-                    return;
+                    // Current game versions also try a machinery-tab drop when targets
+                    // are empty. Mark this drop consumed so that path cannot run again.
+                    cancelled = true;
                 }
             }
-            var old = ChargerTargets.Find(___currentItem, ___lastItem, ___lastInventory)
-                ?? Targets.Find(___currentItem, ___lastItem, ___lastInventory)?.childItem;
-            if (old == null) return;
-            SwapLogic.TrySwap(___currentItem, old);
-            // A rejected replacement is a cancelled drop, not a second native use action.
-            ___currentRemove = 0;
-            ___lastItem = null;
-            ___lastInventory = null;
             // Let the native method finish its normal drag visual/audio cleanup.
         }
     }
@@ -92,14 +101,6 @@ namespace QuickReplace
         {
             if (!ModEntry.Enabled || !___isDragging || ___currentRemove != 1 || ___currentItem == null
                 || ___currentItem.isDebugMenu) return;
-            if (___lastItem != null && !___lastItem.IsID("recharger")
-                && ChargerTargets.FindSpace(___currentItem, ___lastItem, ___lastInventory) != null)
-            {
-                bool zh = LocHelper.GetCurrentLocaleCode().StartsWith("zh", System.StringComparison.OrdinalIgnoreCase);
-                Text.Clear().AddLine(zh ? "松开鼠标，放入空位充电" : "Release to place the battery in an empty space");
-                OverlayHandler.current.ShowTooltip(Input.mousePosition, __instance.tooltipTranslation, Text.Build());
-                return;
-            }
             var charged = ChargerTargets.Find(___currentItem, ___lastItem, ___lastInventory);
             var old = charged ?? Targets.Find(___currentItem, ___lastItem, ___lastInventory)?.childItem;
             if (old == null) return;

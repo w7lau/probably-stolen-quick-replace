@@ -1,6 +1,6 @@
 把新滤芯拖到水壶上，或把新电池拖到电器上，就能直接换下旧的，不用先取出来。
 
-充电器有空位时，拖入电池会先放入空位。放不下时，才换出其中剩余电量最多、且电量比拖入电池更高的一块。拖入的留下充电，换出的回到原物品栏。
+把电池拖到充电器本体上：有空位就先放入，放不下时才换出剩余电量最多、且电量比拖入电池更高的一块。打开充电器后，可以把电池拖到指定电池上交换，或拖到空格里放入。
 
 旧件会放回新件原来的物品栏，放不下就不换。支持游戏允许安装的滤芯、电池等物品，暂不支持成叠物品。
 
@@ -12,7 +12,7 @@
 
 Drag a new filter onto a water pitcher, or a new battery onto an appliance, to replace the old one without removing it first.
 
-Batteries go into empty charger space first. If there is no room, the mod swaps out the battery with the most remaining energy, provided it has more charge than the incoming one. The incoming battery stays to charge, and the other returns to the source inventory.
+Drop a battery onto the charger itself to fill empty space first, or take its highest-energy battery if the charger is full and that battery has more charge. Inside the open charger, drop onto a specific battery to swap with it, or onto empty space to place it there.
 
 The old item goes back to the inventory the new one came from. If there is no room, nothing is swapped. Works with filters, batteries and other items the device accepts. Stacks are not supported.
 

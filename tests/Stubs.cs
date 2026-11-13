@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 namespace HarmonyLib { public class HarmonyPatch:Attribute { public HarmonyPatch(Type t,string n){} } }
-namespace UnityEngine { public struct Vector2 {} public static class Input { public static Vector2 mousePosition; } }
+namespace UnityEngine { public static class Debug { public static List<string> errors=new(); public static void LogError(object error){errors.Add(error.ToString());} } public struct Vector2 {} public static class Input { public static Vector2 mousePosition; } }
 public interface IMod {}
 public class ModManifest {public string ModVersion;}
 public class ModLog {public ModLog(ModManifest m){} public void Log(string s){} }
