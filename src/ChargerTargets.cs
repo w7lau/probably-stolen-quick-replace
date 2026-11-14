@@ -44,7 +44,7 @@ namespace QuickReplace
 
         internal static GameItem Find(GameItem incoming, GameItem hovered, GameInventory hoveredInventory)
         {
-            // Fill usable empty space before exchanging a higher-energy battery.
+            // Fill usable empty space before selecting any battery to exchange.
             // Dragging within the same charger remains ordinary rearrangement.
             var charger = GetCharger(incoming, hovered, hoveredInventory);
             if (charger == null || FindSpace(incoming, hovered, hoveredInventory) != null) return null;
@@ -53,15 +53,21 @@ namespace QuickReplace
             foreach (var child in charger.children) Inventories(child, charger, inventories);
             GameItem best = null;
             int bestEnergy = Energy(incoming);
+            GameItem bestFull = null;
+            bool needsCharging = !PowerHelper.IsPowerSourceFull(incoming);
             foreach (var inventory in inventories)
                 foreach (var candidate in inventory.childItems)
                 {
                     if (!Rechargeable(candidate) || !SwapLogic.Eligible(incoming, candidate)) continue;
                     int energy = Energy(candidate);
+                    // A completed battery can yield its charging space even when its
+                    // capacity is smaller. Among completed batteries, take the most kJ.
+                    if (needsCharging && PowerHelper.IsPowerSourceFull(candidate)
+                        && (bestFull == null || energy > Energy(bestFull))) bestFull = candidate;
                     // Rank by remaining kJ, not capacity or percentage. Keep traversal order on ties.
                     if (energy > bestEnergy) { best = candidate; bestEnergy = energy; }
                 }
-            return best;
+            return bestFull ?? best;
         }
 
         private static void Inventories(GraphNodeStorage node, GameItem owner, List<GameInventory> found)

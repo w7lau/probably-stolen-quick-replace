@@ -50,10 +50,11 @@ public static class GeneralHelper {
  public static bool IsInsideNonOwnedContainer(GameItem i)=>i.parentInventory?.owner is GameItem owner&&(owner.serviceGun?!i.owned:!owner.owned);
 }
 
-public static class LocHelper {public static string GetCurrentLocaleCode()=>"zh";}
+public static class LocHelper {public static string locale="zh";public static string GetCurrentLocaleCode()=>locale;}
 public static class WaterHelper {public const string LIQUID_CONTAINER_TAG="LIQUID_CONTAINER_TAG";}
 public class TagState {public int value;public int GetInt()=>value;}
 public static class PowerHelper {
+ public static bool IsPowerSourceFull(GameItem item)=>item.charge>=item.maxCharge;
  public const string POWER_SOURCE_ITEM_ENERGY="power_source_item_energy",POWER_SOURCE_ITEM_MAX_ENERGY="power_source_item_max_energy",POWER_SOURCE_ITEM_TAG="power_source_item";
  public static bool IsDisposablePowerSource(GameItem item)=>item.disposable;
 }

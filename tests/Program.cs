@@ -61,7 +61,8 @@ Check(ChargerTargets.Find(f.n,f.charger,null)==f.high,"full charger body selects
 Check(ChargerTargets.Find(f.n,null,f.grid)==null,"open charger grid preserves native placement");
 Check(ChargerTargets.Find(f.n,f.low,null)==null,"hovering a battery preserves native targeted exchange");
 f.low.maxCharge=40;f.high.maxCharge=100;
-Check(ChargerTargets.Find(f.n,f.charger,null)==f.high,"remaining energy beats percentage: 90 kJ vs full 40 kJ");
+Check(ChargerTargets.Find(f.n,f.charger,null)==f.low,"completed 40 kJ battery yields charging space before unfinished 90 kJ battery");
+f.low.maxCharge=100;
 f.high.charge=40;Check(ChargerTargets.Find(f.n,f.charger,null)==f.low,"ties keep stable inventory order");
 f.high.charge=95;Check(ChargerTargets.Find(f.n,f.charger,null)==f.high,"charge re-evaluated at drop");
 Check(SwapLogic.TrySwap(f.n,f.high),"grid swap succeeds");
@@ -363,6 +364,63 @@ Original(f,"explicit native cancellation must not swap even if stale targets rem
 f=Fixture();dropCallData=new object[]{f.n,true,f.device,null,1};
 Drop(typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static),dropCallData);
 Check(lastDropCancelled,"successful swap also suppresses machinery-tab fallback");
+}
+// Full batteries yield their space to incoming batteries that still need charging.
+foreach(var scenario in new[]{
+ (input:120,max:250,low:100,lowMax:100,high:200,highMax:250,expected:"low"),
+ (input:20,max:100,low:100,lowMax:100,high:200,highMax:250,expected:"low"),
+ (input:120,max:250,low:90,lowMax:100,high:200,highMax:250,expected:"high"),
+ (input:120,max:250,low:90,lowMax:100,high:100,highMax:250,expected:"none"),
+ (input:100,max:250,low:100,lowMax:100,high:0,highMax:250,expected:"low"),
+ (input:249,max:250,low:100,lowMax:100,high:250,highMax:250,expected:"high"),
+ (input:250,max:250,low:100,lowMax:100,high:200,highMax:250,expected:"none"),
+ (input:100,max:100,low:100,lowMax:100,high:250,highMax:250,expected:"high"),
+ (input:100,max:100,low:100,lowMax:100,high:100,highMax:100,expected:"none"),
+ (input:0,max:250,low:100,lowMax:100,high:100,highMax:100,expected:"low")}){
+var f=ChargerFixture();f.n.charge=scenario.input;f.n.maxCharge=scenario.max;
+f.low.charge=scenario.low;f.low.maxCharge=scenario.lowMax;f.high.charge=scenario.high;f.high.maxCharge=scenario.highMax;
+var expected=scenario.expected=="low"?f.low:scenario.expected=="high"?f.high:null;
+Check(ChargerTargets.Find(f.n,f.charger,null)==expected,"full priority scenario: "+scenario);
+Check(ChargerTargets.Find(f.n,f.low,null)==null&&ChargerTargets.Find(f.n,null,f.grid)==null,"manual targets remain native");
+object[] callArgs={f.n,true,f.charger,null,1};ModEntry.Enabled=true;
+Drop(typeof(ReplaceOnDrop).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static),callArgs);
+if(expected==null){Check(f.n.parentInventory==f.source&&!lastDropCancelled,"no qualifying battery leaves native drop untouched");}
+else{
+Check(f.n.parentInventory==f.grid&&expected.parentInventory==f.source,"selected full/fallback battery exchanged");
+Check(f.n.modifiedShape.x==(expected==f.low?0:1)&&expected.modifiedShape.x==5,"vacated positions preserved");
+Check(lastDropCancelled&&(int)callArgs[4]==0,"no second native transfer after full-battery swap");
+}
+Check(f.n.charge==scenario.input&&f.low.charge==scenario.low&&f.high.charge==scenario.high,"charge and identity preserved");
+Check(f.grid.items.Count==2&&f.source.items.Count==1,"items conserved");
+}
+foreach(var restriction in new[]{"locked","foreign","incompatible","disposable"}){
+var f=ChargerFixture();f.n.charge=120;f.n.maxCharge=250;f.low.charge=100;f.low.maxCharge=100;f.high.charge=200;f.high.maxCharge=250;
+if(restriction=="locked")f.low.removable=false;
+if(restriction=="foreign")f.low.owned=false;
+if(restriction=="incompatible")f.source.mayInventoryAddItemFunc=(i,_)=>i!=f.low;
+if(restriction=="disposable")f.low.disposable=true;
+Check(ChargerTargets.Find(f.n,f.charger,null)==f.high,"unavailable full battery skipped: "+restriction);
+}
+{
+var f=ChargerFixture();f.n.charge=120;f.n.maxCharge=250;f.low.charge=f.low.maxCharge=100;f.high.charge=200;f.high.maxCharge=250;
+f.grid.capacity=3;Check(ChargerTargets.Find(f.n,f.charger,null)==null,"free space still wins over a full battery");
+f.grid.capacity=2;
+foreach(var locale in new[]{"zh","en"}){
+LocHelper.locale=locale;ModEntry.Enabled=true;
+typeof(ReplaceHint).GetMethod("Postfix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,new object[]{new ItemMouseDragHandler(),f.n,true,f.charger,null,1});
+Check(OverlayHandler.current.lastText.Contains(locale=="zh"?"已充满":"fully charged"),"localized full-battery hint");
+Check(OverlayHandler.current.lastText.Contains("100 kJ"),"hint names the selected battery energy");
+}
+LocHelper.locale="zh";f.low.charge=99;
+Check(ChargerTargets.Find(f.n,f.charger,null)==f.high,"recompute full status at drop after hover");
+}
+{
+var f=ChargerFixture();f.n.charge=120;f.n.maxCharge=250;f.low.charge=f.low.maxCharge=100;
+f.source.capacity=1;f.n.modifiedShape.x=0;f.low.modifiedShape.width=2;f.high.modifiedShape.x=2;f.grid.capacity=3;
+Check(ChargerTargets.Find(f.n,f.charger,null)==f.low,"full lower-energy battery selected for safe swap attempt");
+Check(!SwapLogic.TrySwap(f.n,f.low),"no return space cancels full-battery exchange");
+Check(f.n.parentInventory==f.source&&f.low.parentInventory==f.grid&&f.high.parentInventory==f.grid,"no-space rollback preserves both batteries");
+Check(f.n.charge==120&&f.low.charge==100&&f.grid.items.Count==2,"rollback preserves charge and count");
 }
 Console.WriteLine($"PASS: {checks} checks (game doubles; no live gameplay claim)");
 } catch(Exception error) {

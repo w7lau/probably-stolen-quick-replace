@@ -3,11 +3,11 @@
   <ID>quick_replace</ID>
   <Name>直接替换 / Quick Replace</Name>
   <Author>w7lau</Author>
-  <ModVersion>0.2.4</ModVersion>
+  <ModVersion>0.2.5</ModVersion>
   <Description>把新滤芯拖到水壶上，或把新电池拖到电器上，直接换下旧的。旧件放回原来的物品栏，放不下就不换。
-把电池拖到充电器本体上：有空位就先放入，放不下时才换出剩余电量最多、且电量比拖入电池更高的一块。打开充电器后，可以把电池拖到指定电池上交换，或拖到空格里放入。
+把电池拖到充电器本体上：有空位先放入。放不下时，没充满的电池优先换出已满电的，让出位置继续充电；有多块满电电池时，取电量最多的一块。没有合适的满电电池，或拖入的电池已满时，才按剩余电量换出比手里电量更多的一块。打开充电器后，仍可拖到指定电池上交换，或拖到空格里放入。
 Drag a new filter or battery onto a device to replace the old one. The old item returns to the source inventory; nothing is swapped if it cannot fit.
-Drop a battery onto the charger itself to fill empty space first, or take its highest-energy battery if the charger is full and that battery has more charge. Inside the open charger, drop onto a specific battery to swap with it, or onto empty space to place it there.</Description>
+Drop a battery onto the charger itself to fill empty space first. If there is no room, a battery that needs charging takes the place of a fully charged one, choosing the most energy among fully charged batteries. If none is eligible, or the incoming battery is already full, take a battery only if it has more remaining energy. Inside the open charger, drop onto a specific battery to swap with it, or onto empty space to place it there.</Description>
   <GameVersions><Version>0.46D</Version></GameVersions>
   <Prerequisites />
   <Assemblies><Assembly>QuickReplace.dll</Assembly></Assemblies>

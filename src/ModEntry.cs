@@ -105,14 +105,16 @@ namespace QuickReplace
             var old = charged ?? Targets.Find(___currentItem, ___lastItem, ___lastInventory)?.childItem;
             if (old == null) return;
             bool chinese = LocHelper.GetCurrentLocaleCode().StartsWith("zh", System.StringComparison.OrdinalIgnoreCase);
+            bool takingFull = charged != null && !PowerHelper.IsPowerSourceFull(___currentItem)
+                && PowerHelper.IsPowerSourceFull(charged);
             Text.Clear();
             if (charged != null && chinese)
-                Text.AddLine("松开鼠标，换出电量最多的电池")
+                Text.AddLine(takingFull ? "松开鼠标，换出已充满的电池" : "松开鼠标，换出电量最多的电池")
                     .AddLine(charged.name + "（" + ChargerTargets.Energy(charged) + " kJ）")
                     .AddLine("拖入的留下充电，换出的放回原物品栏。")
                     .AddLine("放不下就不换。");
             else if (charged != null)
-                Text.AddLine("Release to take the battery with the most charge")
+                Text.AddLine(takingFull ? "Release to take a fully charged battery" : "Release to take the battery with the most charge")
                     .AddLine(charged.name + " (" + ChargerTargets.Energy(charged) + " kJ)")
                     .AddLine("The battery you dragged in stays to charge.")
                     .AddLine("The charged one returns to the source inventory.")
